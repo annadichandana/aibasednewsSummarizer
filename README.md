@@ -15,7 +15,8 @@ appmy is an AI-powered mini Google-like platform that provides concise answers t
 - *Machine Learning:* NLP-based summarization models
 - *Database:* PostgreSQL / SQLite (as per requirements)
 - *APIs:* Web scraping & search engine integration (Google, Bing, etc.)
-
+- ##Live Demo
+[click here to view the deployed app](https://aibasednewssummarizer.onrender.com)
 ## Installation
 
 1. Clone the repository:
