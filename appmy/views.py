@@ -1,68 +1,67 @@
 import requests
-import re
-import ast 
 from django.shortcuts import render
-from django.http import HttpResponse
+from django.http import JsonResponse
 from django.views.decorators.csrf import csrf_exempt
+from newspaper import Article
+from transformers import pipeline
 
-API_KEY = 'AIzaSyCInUwrK2Gns2MZR4SbmIP0rU3fQcFPbds'  
-CSE_ID = '53bf6ac9a3cd54403'
+summarizer = None
+
+def get_summarizer():
+    global summarizer
+    if summarizer is None:
+        print("Loading summarization model... (this may take a minute on first run)")
+        summarizer = pipeline("summarization", model="sshleifer/distilbart-cnn-12-6")
+    return summarizer
 
 @csrf_exempt  
 def index(request):
     if request.method == "POST":
-        query = request.POST.get('query', '')
-
-        if is_math_expression(query):
-            answer = solve_math_expression(query)
-            return HttpResponse(f"Answer: {answer}")
-
+        input_type = request.POST.get('input_type', '')
+        text_to_summarize = ""
         
-        search_results = search_google(query)
-        return HttpResponse(f"Search results: {search_results}")
-
-    
-    return render(request, 'index.html')
-
-def is_math_expression(query):
-    """Check if the query is a mathematical expression."""
-    return bool(re.match(r'^[0-9+\-*/^().\s]+$', query))
-
-def solve_math_expression(query):
-    """Safely solve a simple mathematical expression."""
-    try:
-        result = ast.literal_eval(query)  
-        return result
-    except Exception as e:
-        return f"Error solving expression: {str(e)}"
-
-def search_google(query):
-    """Function to search using Google Custom Search API."""
-    url = f"https://www.googleapis.com/customsearch/v1?q={query}&key={API_KEY}&cx={CSE_ID}"
-    
-    try:
-        response = requests.get(url)
-        data = response.json()
-        
-        if 'items' in data:
-            results = data['items']
-            search_results = ""
-            for result in results:
-                title = result.get('title', 'No title available')
-                snippet = result.get('snippet', 'No description available.')
-                link = result.get('link', '#')
-                image_url = result.get('pagemap', {}).get('cse_image', [{}])[0].get('src', None)
+        try:
+            if input_type == 'text':
+                text_to_summarize = request.POST.get('raw_text', '').strip()
+            elif input_type == 'url':
+                url = request.POST.get('url', '').strip()
+                if url:
+                    article = Article(url)
+                    article.download()
+                    article.parse()
+                    text_to_summarize = article.text
+            elif input_type == 'file':
+                if 'file' in request.FILES:
+                    uploaded_file = request.FILES['file']
+                    if uploaded_file.name.endswith('.txt'):
+                        text_to_summarize = uploaded_file.read().decode('utf-8')
+                    else:
+                        return JsonResponse({'error': 'Only .txt files are supported.'}, status=400)
+            
+            if not text_to_summarize:
+                return JsonResponse({'error': 'Please provide some text to summarize.'}, status=400)
                 
-                search_results += f"""
-                <div class="result">
-                    <h3><a href="{link}">{title}</a></h3>
-                    <p>{snippet}</p>
-                    {f'<img src="{image_url}" alt="{title}" width="500" height="auto" />' if image_url else ''}
-                    <p><a href="{link}">More info</a></p>
-                </div><br><br>
-                """
-            return search_results
-        else:
-            return "No results found."
-    except Exception as e:
-        return f"Error: {str(e)}"
+            ai_summarizer = get_summarizer()
+            
+            max_input_length = 3500
+            if len(text_to_summarize) > max_input_length:
+                short_text = text_to_summarize[:max_input_length]
+                last_period = short_text.rfind('.')
+                if last_period > 0:
+                    short_text = short_text[:last_period+1]
+            else:
+                short_text = text_to_summarize
+                
+            summary_result = ai_summarizer(short_text, max_length=150, min_length=40, do_sample=False)
+            summary = summary_result[0]['summary_text']
+            
+            return JsonResponse({
+                'success': True,
+                'summary': summary,
+                'original_text_preview': text_to_summarize[:300] + "..." if len(text_to_summarize) > 300 else text_to_summarize
+            })
+            
+        except Exception as e:
+            return JsonResponse({'error': str(e)}, status=500)
+
+    return render(request, 'index.html')

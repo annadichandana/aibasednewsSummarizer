@@ -3,70 +3,278 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>News Summairiser</title>
+    <title>AI News Summarizer</title>
     <link href="https://stackpath.bootstrapcdn.com/bootstrap/4.5.2/css/bootstrap.min.css" rel="stylesheet">
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;600;700&display=swap" rel="stylesheet">
     <style>
         body {
-            background-color: #f0f8ff;
-            font-family: Arial, sans-serif;
+            background: linear-gradient(135deg, #0f2027, #203a43, #2c5364);
+            font-family: 'Inter', sans-serif;
+            color: #ffffff;
+            min-height: 100vh;
+            display: flex;
+            flex-direction: column;
         }
         .header {
-            background-color: #4CAF50;
-            color: white;
-            padding: 20px 0;
+            padding: 40px 0;
             text-align: center;
+            background: rgba(255, 255, 255, 0.05);
+            backdrop-filter: blur(10px);
+            border-bottom: 1px solid rgba(255, 255, 255, 0.1);
+        }
+        .header h1 {
+            font-weight: 700;
+            background: -webkit-linear-gradient(45deg, #00d2ff, #3a7bd5);
+            -webkit-background-clip: text;
+            -webkit-text-fill-color: transparent;
+            margin-bottom: 10px;
         }
         .search-container {
-            margin: 40px auto;
-            max-width: 600px;
-            padding: 30px;
-            background-color: white;
-            box-shadow: 0 4px 8px rgba(0, 0, 0, 0.1);
-            border-radius: 8px;
+            margin: 50px auto;
+            max-width: 800px;
+            padding: 40px;
+            background: rgba(255, 255, 255, 0.1);
+            backdrop-filter: blur(15px);
+            box-shadow: 0 15px 35px rgba(0, 0, 0, 0.2);
+            border-radius: 20px;
+            border: 1px solid rgba(255, 255, 255, 0.15);
         }
-        .footer {
-            background-color: #4CAF50;
+        .nav-tabs {
+            border-bottom: 1px solid rgba(255, 255, 255, 0.2);
+            margin-bottom: 25px;
+        }
+        .nav-tabs .nav-link {
+            color: #ffffff;
+            border: none;
+            border-radius: 0;
+            padding: 10px 20px;
+            font-weight: 600;
+            opacity: 0.6;
+            transition: all 0.3s ease;
+        }
+        .nav-tabs .nav-link:hover {
+            opacity: 1;
+            border: none;
+        }
+        .nav-tabs .nav-link.active {
+            background-color: transparent;
+            color: #00d2ff;
+            opacity: 1;
+            border-bottom: 2px solid #00d2ff;
+        }
+        .form-control, .form-control-file {
+            background: rgba(255, 255, 255, 0.05);
+            border: 1px solid rgba(255, 255, 255, 0.2);
+            color: #ffffff;
+            border-radius: 10px;
+            padding: 15px;
+        }
+        .form-control:focus {
+            background: rgba(255, 255, 255, 0.1);
+            border-color: #00d2ff;
+            box-shadow: none;
+            color: #ffffff;
+        }
+        .btn-custom {
+            background: linear-gradient(45deg, #00d2ff, #3a7bd5);
+            border: none;
             color: white;
-            text-align: center;
-            padding: 10px 0;
-            position: fixed;
+            padding: 12px 20px;
+            font-size: 16px;
+            font-weight: 600;
+            border-radius: 10px;
+            transition: transform 0.2s, box-shadow 0.2s;
             width: 100%;
-            bottom: 0;
         }
-        .result img {
-            width: 100%;
-            max-height: 300px;
-            object-fit: cover;
-            margin-top: 10px;
+        .btn-custom:hover {
+            transform: translateY(-2px);
+            box-shadow: 0 10px 20px rgba(0, 210, 255, 0.3);
+            color: white;
+        }
+        
+        #loading {
+            display: none;
+            text-align: center;
+            margin: 30px 0;
+        }
+        .spinner {
+            width: 50px;
+            height: 50px;
+            border: 5px solid rgba(255, 255, 255, 0.1);
+            border-top: 5px solid #00d2ff;
+            border-radius: 50%;
+            animation: spin 1s linear infinite;
+            margin: 0 auto;
+        }
+        @keyframes spin {
+            0% { transform: rotate(0deg); }
+            100% { transform: rotate(360deg); }
+        }
+        .loading-text {
+            margin-top: 15px;
+            color: #00d2ff;
+            font-weight: 600;
+            animation: pulse 1.5s infinite;
+        }
+        @keyframes pulse {
+            0% { opacity: 0.6; }
+            50% { opacity: 1; }
+            100% { opacity: 0.6; }
+        }
+
+        #result-box {
+            display: none;
+            margin-top: 30px;
+            padding: 25px;
+            background: rgba(0, 210, 255, 0.05);
+            border: 1px solid rgba(0, 210, 255, 0.3);
+            border-radius: 15px;
+            animation: fadeIn 0.5s ease;
+        }
+        @keyframes fadeIn {
+            from { opacity: 0; transform: translateY(10px); }
+            to { opacity: 1; transform: translateY(0); }
+        }
+        .summary-title {
+            color: #00d2ff;
+            font-weight: 700;
+            margin-bottom: 15px;
+        }
+        .error-message {
+            color: #ff4d4d;
+            background: rgba(255, 77, 77, 0.1);
+            padding: 15px;
+            border-radius: 10px;
+            border: 1px solid #ff4d4d;
+            display: none;
+            margin-top: 20px;
         }
     </style>
 </head>
 <body>
 
     <div class="header">
-        <h1>Welcome!</h1>
-        <p>Get the answers you need, instantly!</p>
+        <div class="container">
+            <h1>AI News Summarizer</h1>
+            <p>Cut through the noise. Get instant, AI-generated summaries of lengthy news articles.</p>
+        </div>
     </div>
 
-    <div class="search-container">
-        <h2>Search Anything</h2>
-        <form action="{% url 'index' %}"  method="POST">
-            {% csrf_token %}
-            <div class="form-group">
-                <input type="text" class="form-control" name="query" placeholder="Enter your query..." required>
+    <div class="container">
+        <div class="search-container">
+            
+            <ul class="nav nav-tabs" id="myTab" role="tablist">
+                <li class="nav-item">
+                    <a class="nav-link active" id="text-tab" data-toggle="tab" href="#text" role="tab">Paste Text</a>
+                </li>
+                <li class="nav-item">
+                    <a class="nav-link" id="url-tab" data-toggle="tab" href="#url" role="tab">News URL</a>
+                </li>
+                <li class="nav-item">
+                    <a class="nav-link" id="file-tab" data-toggle="tab" href="#file" role="tab">Upload .txt</a>
+                </li>
+            </ul>
+
+            <form id="summarize-form" enctype="multipart/form-data">
+                {% csrf_token %}
+                <input type="hidden" id="input_type" name="input_type" value="text">
+
+                <div class="tab-content" id="myTabContent">
+                    <div class="tab-pane fade show active" id="text" role="tabpanel">
+                        <div class="form-group">
+                            <textarea class="form-control" id="raw_text" name="raw_text" rows="6" placeholder="Paste your news article here..."></textarea>
+                        </div>
+                    </div>
+                    <div class="tab-pane fade" id="url" role="tabpanel">
+                        <div class="form-group">
+                            <input type="url" class="form-control" id="url_input" name="url" placeholder="https://example.com/news-article">
+                        </div>
+                    </div>
+                    <div class="tab-pane fade" id="file" role="tabpanel">
+                        <div class="form-group">
+                            <input type="file" class="form-control-file" id="file_input" name="file" accept=".txt">
+                            <small class="text-white-50 mt-2 d-block">Only .txt files are supported.</small>
+                        </div>
+                    </div>
+                </div>
+
+                <div class="mt-4">
+                    <button type="submit" class="btn btn-custom" id="submit-btn">Generate Summary</button>
+                </div>
+            </form>
+
+            <div id="loading">
+                <div class="spinner"></div>
+                <div class="loading-text">AI is reading and summarizing your article...<br><small class="text-white-50">(This may take up to a minute on the first run)</small></div>
             </div>
-            <button type="submit" class="btn btn-success btn-block">Search</button>
-        </form>
-        
-        
+
+            <div class="error-message" id="error-message"></div>
+
+            <div id="result-box">
+                <h3 class="summary-title">✨ Key Takeaways</h3>
+                <p id="summary-text" style="font-size: 1.1rem; line-height: 1.6;"></p>
+                <hr style="border-top: 1px solid rgba(255,255,255,0.1); margin: 20px 0;">
+                <h5 class="text-white-50">Original Preview:</h5>
+                <p id="original-preview" class="text-white-50" style="font-size: 0.9rem;"></p>
+            </div>
+            
+        </div>
     </div>
 
-    <div class="footer">
-        <p>&copy; 2025 aibasednewssummairiser. All rights reserved.</p>
-    </div>
 
-    <script src="https://code.jquery.com/jquery-3.5.1.slim.min.js"></script>
+    <script src="https://code.jquery.com/jquery-3.5.1.min.js"></script>
     <script src="https://cdn.jsdelivr.net/npm/@popperjs/core@2.9.3/dist/umd/popper.min.js"></script>
     <script src="https://stackpath.bootstrapcdn.com/bootstrap/4.5.2/js/bootstrap.min.js"></script>
+
+    <script>
+        $(document).ready(function() {
+            $('a[data-toggle="tab"]').on('shown.bs.tab', function (e) {
+                var target = $(e.target).attr("href").substring(1);
+                $('#input_type').val(target);
+            });
+
+            $('#summarize-form').on('submit', function(e) {
+                e.preventDefault();
+                
+                $('#error-message').hide();
+                $('#result-box').hide();
+                $('#loading').show();
+                $('#submit-btn').prop('disabled', true);
+
+                var formData = new FormData(this);
+
+                $.ajax({
+                    url: "{% url 'index' %}",  
+                    type: 'POST',
+                    data: formData,
+                    success: function (data) {
+                        $('#loading').hide();
+                        $('#submit-btn').prop('disabled', false);
+                        
+                        if (data.success) {
+                            $('#summary-text').text(data.summary);
+                            $('#original-preview').text(data.original_text_preview);
+                            $('#result-box').show();
+                        } else {
+                            $('#error-message').text(data.error || 'An unknown error occurred.').show();
+                        }
+                    },
+                    error: function (xhr) {
+                        $('#loading').hide();
+                        $('#submit-btn').prop('disabled', false);
+                        
+                        var errorMsg = 'An error occurred while processing your request.';
+                        if (xhr.responseJSON && xhr.responseJSON.error) {
+                            errorMsg = xhr.responseJSON.error;
+                        }
+                        $('#error-message').text(errorMsg).show();
+                    },
+                    cache: false,
+                    contentType: false,
+                    processData: false
+                });
+            });
+        });
+    </script>
 </body>
 </html>
